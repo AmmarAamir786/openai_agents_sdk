@@ -4,32 +4,25 @@ from agents.run import RunConfig
 from dotenv import load_dotenv
 import os
 
-# Load the environment variables from the .env file
 load_dotenv()
+groq_api_key = os.getenv('GROQ_API_KEY')
 
-# Set up the your Gemini API key
-openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-
-# 1 Set up the provider to use the Gemini API Key
 provider = AsyncOpenAI(
-    api_key=openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    api_key=groq_api_key,
+    base_url="https://api.groq.com/openai/v1",
 )
 
-# 2 Set up the model to use the provider
 model = OpenAIChatCompletionsModel(
-    model='meta-llama/llama-4-maverick:free',
+    model='meta-llama/llama-4-scout-17b-16e-instruct',
     openai_client=provider,
 )
 
-# 3 Set up the run configuraion
 run_config = RunConfig(
     model=model,
     model_provider=provider,
     tracing_disabled=True,
 )
 
-# 4 Set up the agent to use the model
 spanish_agent = Agent(
     name="spanish_agent",
     instructions="You translate the user's message to Spanish",
@@ -51,6 +44,8 @@ urdu_agent = Agent(
     model=model
 )
 
+#think of this as an orchestrator or supervisor agent
+#It chooses which agent to send data to based on the user's query
 triage_agent = Agent(
     name="Triage Agent",
     instructions="You determine which agent to use based on the user's query",
@@ -58,7 +53,6 @@ triage_agent = Agent(
 )
 
 async def main():
-    # 5 Set up the runner to use the agent
     result = await Runner.run(
         triage_agent,
         input="please translate this to urdu: 'Hello, how are you?'",
