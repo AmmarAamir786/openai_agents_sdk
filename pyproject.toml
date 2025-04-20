@@ -15,4 +15,5 @@ dependencies = [
     "openai-agents>=0.0.6",
     "pypdf2>=3.0.1",
     "pdfplumber>=0.11.6",
+    "qdrant-client>=1.13.3",
 ]
