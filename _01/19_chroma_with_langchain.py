@@ -84,7 +84,12 @@ run_config = RunConfig(
 
 agent = Agent(
     name="Document QA Agent",
-    instructions="You are a helpful assistant who answers questions based only on the provided document.",
+    instructions="""
+                    You are a helpful assistant. 
+                    You must answer user queries using only the information available in the document.
+                    To do so, always use the `chroma_search` tool.
+                    Do not rely on prior knowledge or assumptions. Just invoke the tool with the user query and use its results to answer.
+                """,
     tools=[chroma_search],
 )
 
