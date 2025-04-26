@@ -1,4 +1,7 @@
-import os, asyncio, warnings, logging
+import os
+import asyncio
+import warnings
+import logging
 from typing import List
 from dotenv import load_dotenv
 import pdfplumber
@@ -7,7 +10,8 @@ import pdfplumber
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import Qdrant
+from qdrant_client import QdrantClient
 
 # Agent SDK
 from agents.tool import function_tool
@@ -60,12 +64,14 @@ def build_documents(pdf_path: str) -> List[Document]:
 QDRANT_PATH = "./qdrant_local"
 COLLECTION_NAME = "panaversity_docs"
 
-if os.path.exists(QDRANT_PATH):
+client = QdrantClient(path=QDRANT_PATH)
+
+if client.collection_exists(COLLECTION_NAME):
     print("🔁 Loading Qdrant vectorstore …")
     vectorstore = Qdrant(
+        client=client,
         collection_name=COLLECTION_NAME,
         embeddings=embeddings,
-        path=QDRANT_PATH,
     )
 else:
     print("📄 Creating Qdrant vectorstore …")
@@ -73,8 +79,8 @@ else:
     vectorstore = Qdrant.from_documents(
         documents=docs,
         embedding=embeddings,
+        client=client,
         collection_name=COLLECTION_NAME,
-        path=QDRANT_PATH,
     )
     print("✅ Qdrant vectorstore created.")
 
@@ -136,7 +142,7 @@ agent = Agent(
 async def main():
     res = await Runner.run(
         agent,
-        input="What does the document say about courses offered?",
+        input="List all the courses that are offered in the document.",
         run_config=run_config,
     )
     print("\n=== Answer ===\n", res.final_output)
