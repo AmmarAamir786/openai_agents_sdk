@@ -9,17 +9,31 @@ import os
 load_dotenv()
 
 # Set up the your Gemini API key
-gemini_api_key = os.getenv('GEMINI_API_KEY')
+# gemini_api_key = os.getenv('GEMINI_API_KEY')
+
+# # 1 Set up the provider to use the Gemini API Key
+# provider = AsyncOpenAI(
+#     api_key=gemini_api_key,
+#     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+# )
+
+# # 2 Set up the model to use the provider
+# model = OpenAIChatCompletionsModel(
+#     model='gemini-2.0-flash',
+#     openai_client=provider,
+# )
+
+openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
 
 # 1 Set up the provider to use the Gemini API Key
 provider = AsyncOpenAI(
-    api_key=gemini_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    api_key=openrouter_api_key,
+    base_url="https://openrouter.ai/api/v1",
 )
-
+    
 # 2 Set up the model to use the provider
 model = OpenAIChatCompletionsModel(
-    model='gemini-2.0-flash',
+    model='google/gemini-2.5-flash-preview',
     openai_client=provider,
 )
 
