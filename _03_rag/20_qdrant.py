@@ -1,128 +1,93 @@
-import os
-import asyncio
-import warnings
-import logging
+import os, asyncio, warnings, logging
 from typing import List
-from dotenv import load_dotenv
 import pdfplumber
+from dotenv import load_dotenv
 
-# LangChain & GenAI
+# ── LangChain & embeddings ────────────────────────────────────────────────
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_qdrant import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
+from qdrant_client.http import models as qm
 
-# Agent SDK
+# ── Agent SDK ─────────────────────────────────────────────────────────────
 from agents.tool import function_tool
 from agents import Agent, OpenAIChatCompletionsModel, RunConfig, Runner
 from openai import AsyncOpenAI
 
-# ──────────────────────────────────────────────
-# Silence pdfplumber CropBox warnings
-# ──────────────────────────────────────────────
+# ── Quiet noisy logs ──────────────────────────────────────────────────────
 warnings.filterwarnings(
-    "ignore",
-    message="CropBox missing from /Page, defaulting to MediaBox",
-    category=UserWarning,
+    "ignore", message="CropBox missing from /Page", category=UserWarning
 )
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
-# ──────────────────────────────────────────────
-# Env & Embeddings
-# ──────────────────────────────────────────────
+# ── Env & embeddings ──────────────────────────────────────────────────────
 load_dotenv()
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 os.environ["GOOGLE_API_KEY"] = gemini_api_key
-
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
-# ──────────────────────────────────────────────
-# PDF → Text Extraction
-# ──────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────
 def extract_text_from_pdf(path: str) -> str:
     with pdfplumber.open(path) as pdf:
         return "\n".join(p.extract_text() or "" for p in pdf.pages)
 
-# ──────────────────────────────────────────────
-# Split into Documents
-# ──────────────────────────────────────────────
 def build_documents(pdf_path: str) -> List[Document]:
     text = extract_text_from_pdf(pdf_path)
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=1000, chunk_overlap=200,
         separators=["\n\n", "\n", ".", "!", "?", " "],
     )
-    chunks = splitter.split_text(text)
-    logging.info("🔹 Chunked into %s docs", len(chunks))
-    return [Document(page_content=c) for c in chunks]
+    return [Document(page_content=t) for t in splitter.split_text(text)]
 
-# ──────────────────────────────────────────────
-# Qdrant (local embedded mode)
-# ──────────────────────────────────────────────
-QDRANT_PATH = "./qdrant_local"
-COLLECTION_NAME = "panaversity_docs"
-
+# ── Qdrant local store ────────────────────────────────────────────────────
+QDRANT_PATH, COLLECTION = "./qdrant_local", "panaversity_docs"
 client = QdrantClient(path=QDRANT_PATH)
 
-if client.collection_exists(COLLECTION_NAME):
-    print("🔁 Loading Qdrant vectorstore …")
-    vectorstore = Qdrant(
-        client=client,
-        collection_name=COLLECTION_NAME,
-        embeddings=embeddings,
+if not client.collection_exists(COLLECTION):
+    print("📄 Creating Qdrant collection …")
+    dim = len(embeddings.embed_query("dimension_probe"))
+    client.create_collection(
+        collection_name=COLLECTION,
+        vectors_config=qm.VectorParams(size=dim, distance=qm.Distance.COSINE),
     )
-else:
-    print("📄 Creating Qdrant vectorstore …")
+    vectorstore = QdrantVectorStore(
+        client=client, collection_name=COLLECTION, embedding=embeddings
+    )
     docs = build_documents("Panaversity.pdf")
-    vectorstore = Qdrant.from_documents(
-        documents=docs,
-        embedding=embeddings,
-        client=client,
-        collection_name=COLLECTION_NAME,
+    vectorstore.add_documents(docs)
+    print("✅ Collection created and populated.")
+else:
+    print("🔁 Loaded existing Qdrant collection.")
+    vectorstore = QdrantVectorStore(
+        client=client, collection_name=COLLECTION, embedding=embeddings
     )
-    print("✅ Qdrant vectorstore created.")
 
-# ──────────────────────────────────────────────
-# Retriever with MMR
-# ──────────────────────────────────────────────
+# ── Retriever (MMR) ───────────────────────────────────────────────────────
 retriever = vectorstore.as_retriever(
     search_type="mmr",
     search_kwargs={"k": 20, "lambda_mult": 0.4, "fetch_k": 50},
 )
-
-def get_snippets(query: str, top_n: int = 5) -> List[str]:
+def get_snippets(query: str, top_n: int = 5):
     return [d.page_content.strip() for d in retriever.invoke(query)[:top_n]]
 
-# ──────────────────────────────────────────────
-# LangChain Tool exposed to agent
-# ──────────────────────────────────────────────
+# ── Expose search tool to agent ───────────────────────────────────────────
 @function_tool("qdrant_search")
 def qdrant_search(query: str) -> str:
-    """Return up to 5 relevant snippets from the Panaversity PDF."""
     snippets = get_snippets(query)
     return "NO_RELEVANT_CONTEXT" if not snippets else \
            "\n\n".join(f"[{i+1}] {s}" for i, s in enumerate(snippets))
 
-# ──────────────────────────────────────────────
-# Agent Setup
-# ──────────────────────────────────────────────
+# ── Agent setup ───────────────────────────────────────────────────────────
 provider = AsyncOpenAI(
     api_key=gemini_api_key,
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
-
 model = OpenAIChatCompletionsModel(
-    model="gemini-2.0-flash",
-    openai_client=provider,
+    model="gemini-2.0-flash", openai_client=provider
 )
-
-run_config = RunConfig(
-    model=model,
-    model_provider=provider,
-    tracing_disabled=True,
-)
+run_cfg = RunConfig(model=model, model_provider=provider, tracing_disabled=True)
 
 agent = Agent(
     name="Document QA Agent",
@@ -136,14 +101,12 @@ agent = Agent(
     tools=[qdrant_search],
 )
 
-# ──────────────────────────────────────────────
-# Run the Agent
-# ──────────────────────────────────────────────
+# ── Run the agent ─────────────────────────────────────────────────────────
 async def main():
     res = await Runner.run(
         agent,
         input="List all the courses that are offered in the document.",
-        run_config=run_config,
+        run_config=run_cfg,
     )
     print("\n=== Answer ===\n", res.final_output)
 
