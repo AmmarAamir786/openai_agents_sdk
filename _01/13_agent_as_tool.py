@@ -93,12 +93,12 @@ triage_agent = Agent(
 
 async def main():
 
-    handoff_result = await Runner.run(
-        triage_agent,
-        input="please translate this to spanish: 'Hello, how are you?'",
-        run_config=run_config,
-    )
-    print("Handoff Result:", handoff_result.final_output)
+    # handoff_result = await Runner.run(
+    #     triage_agent,
+    #     input="please translate this to spanish: 'Hello, how are you?'",
+    #     run_config=run_config,
+    # )
+    # print("Handoff Result:", handoff_result.final_output)
     
     # Instead of calling the tool directly (which causes the error), invoke the orchestrator.
     orchestrator_result = await Runner.run(
