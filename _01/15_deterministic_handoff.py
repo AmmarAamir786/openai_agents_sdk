@@ -47,15 +47,16 @@ story_agent = Agent(
 story_outline_agent = Agent(
     name="story_outline_agent",
     instructions=(
-        "Generate a brief and creative story outline based on the following prompt: {input}. "
-        "After generating the outline, hand it off to the story_agent."
+    "Generate a brief and creative story outline based on the following prompt: {input}. "
+    "Return the outline as a JSON object with fields: title, protagonist, antagonist, setting. "
+    "After generating the outline, hand it off to the story_agent."
     ),
     handoffs=[story_agent],
     model=outline_model,      # ← Gemini here
 )
 
 async def main():
-    prompt = input("Enter a prompt for the story: ")
+    prompt = "Time Travel"
     result = await Runner.run(
         story_outline_agent,
         prompt,
