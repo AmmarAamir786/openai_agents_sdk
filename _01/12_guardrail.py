@@ -60,7 +60,7 @@ translation_guardrail_agent = Agent(
         "or false otherwise, and provide your reasoning in the 'reasoning' field."
     ),
     output_type=TranslationOutput,
-    model=model
+    model=model # can choose simpler and cheaper model for guardrails
 )
 
 # Define the guardrail function using the guardrail agent
