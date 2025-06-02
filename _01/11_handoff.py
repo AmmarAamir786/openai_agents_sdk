@@ -15,7 +15,7 @@ provider = AsyncOpenAI(
 model = OpenAIChatCompletionsModel(
     model='meta-llama/llama-4-scout-17b-16e-instruct',
     openai_client=provider,
-)
+)  # Automatically use tools when needed
 
 run_config = RunConfig(
     model=model,
