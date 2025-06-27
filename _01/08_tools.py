@@ -4,23 +4,23 @@ from agents.run import RunConfig
 from dotenv import load_dotenv
 from agents.tool import function_tool
 import os
-# from agents import enable_verbose_stdout_logging
-# enable_verbose_stdout_logging()
+from agents import enable_verbose_stdout_logging
+enable_verbose_stdout_logging()
 
 # Load the environment variables from the .env file
 load_dotenv()
 
-openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+gemini_api_key = os.getenv('GEMINI_API_KEY')
 
 # 1 Set up the provider to use the Gemini API Key
 provider = AsyncOpenAI(
-    api_key=openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    api_key=gemini_api_key,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
-    
+
 # 2 Set up the model to use the provider
 model = OpenAIChatCompletionsModel(
-    model='google/gemini-2.5-flash-preview',
+    model='gemini-2.0-flash',
     openai_client=provider,
 )
 
