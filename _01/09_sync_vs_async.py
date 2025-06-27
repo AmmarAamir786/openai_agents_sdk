@@ -1,5 +1,5 @@
 import asyncio
-from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
+from agents import Agent, ModelSettings, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 from dotenv import load_dotenv
 from agents.tool import function_tool
@@ -10,17 +10,17 @@ import os
 # Load the environment variables from the .env file
 load_dotenv()
 
-openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+gemini_api_key = os.getenv('GEMINI_API_KEY')
 
 # 1 Set up the provider to use the Gemini API Key
 provider = AsyncOpenAI(
-    api_key=openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    api_key=gemini_api_key,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
-    
+
 # 2 Set up the model to use the provider
 model = OpenAIChatCompletionsModel(
-    model='google/gemini-2.5-flash-preview',
+    model='gemini-2.0-flash',
     openai_client=provider,
 )
 
@@ -31,32 +31,28 @@ run_config = RunConfig(
     tracing_disabled=True,
 )
 
-#creating tools
-@function_tool("get_weather")
-def get_weather(location: str, unit: str = "Celcius") -> str:
-  """
-  Fetch the weather for a given location, returning a short description.
-  """
-  # Example logic
-  return f"The weather in {location} is 22 degrees {unit}."
 
 
 async def main():
     # 4 Set up the agent to use the model
     agent = Agent(
         name="agent",
-        instructions="You are a helpful assistant. Please provide clear answer without extra info. You will provide weather in ferenhite",
-        tools=[get_weather],
+        instructions="You are a helpful assistant.",
+        # tools=[tool_a],
+        model_settings=ModelSettings(tool_choice="required"),
+        tool_use_behavior="stop_on_first_tool",
     )
 
     # 5 Set up the runner to use the agent
     result = await Runner.run(
         agent, 
-        input="what is the weather in karachi", 
+        input="hello", 
         run_config=run_config
     )
 
     print(result.final_output)
 
 if __name__ == "__main__":
+    print("Starting the async agent...")
     asyncio.run(main())
+    print("Async agent finished.")

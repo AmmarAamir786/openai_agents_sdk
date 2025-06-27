@@ -2,12 +2,14 @@ import asyncio
 from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 from dotenv import load_dotenv
+from agents.tool import function_tool
 import os
+from agents import enable_verbose_stdout_logging
+enable_verbose_stdout_logging()
 
 # Load the environment variables from the .env file
 load_dotenv()
 
-# Set up the your Gemini API key
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 
 # 1 Set up the provider to use the Gemini API Key
@@ -29,27 +31,44 @@ run_config = RunConfig(
     tracing_disabled=True,
 )
 
+#creating tools
+@function_tool("get_weather")
+def get_weather(location: str, unit: str = "Celcius") -> str:
+  """
+  Fetch the weather for a given location, returning a short description.
+  """
+  # Example logic
+  return f"The weather in {location} is 22 degrees {unit}."
+
+
+@function_tool("piaic_student_finder")
+def piaic_student_finder(student_roll: int) -> str:
+  """
+  find the PIAIC student based on the roll number
+  """
+  data = {1: "Qasim",
+          2: "Sir Zia",
+          3: "Daniyal"}
+
+  return data.get(student_roll, "Not Found")
+
+
 async def main():
     # 4 Set up the agent to use the model
     agent = Agent(
         name="agent",
-        instructions="You are a helpful assistant."
+        instructions="You are a helpful assistant.",
+        tools=[get_weather, piaic_student_finder],
     )
 
     # 5 Set up the runner to use the agent
-    result = Runner.run_streamed(
+    result = await Runner.run(
         agent, 
-        input="write a 500 words essay on pop", 
+        input="what is the name of the student with roll number 2", 
         run_config=run_config
     )
 
-    # 6 Stream the response token by token
-    async for event in result.stream_events():
-        if event.type == "raw_response_event" and hasattr(event.data, 'delta'):
-            token = event.data.delta
-            print(token)
-
-    # print(result.final_output)
+    print(result.final_output)
 
 if __name__ == "__main__":
     asyncio.run(main())

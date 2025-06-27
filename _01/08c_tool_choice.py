@@ -1,26 +1,26 @@
 import asyncio
-from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
+from agents import Agent, ModelSettings, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 from dotenv import load_dotenv
 from agents.tool import function_tool
 import os
-# from agents import enable_verbose_stdout_logging
-# enable_verbose_stdout_logging()
+from agents import enable_verbose_stdout_logging
+enable_verbose_stdout_logging()
 
 # Load the environment variables from the .env file
 load_dotenv()
 
-openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+gemini_api_key = os.getenv('GEMINI_API_KEY')
 
 # 1 Set up the provider to use the Gemini API Key
 provider = AsyncOpenAI(
-    api_key=openrouter_api_key,
-    base_url="https://openrouter.ai/api/v1",
+    api_key=gemini_api_key,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
-    
+
 # 2 Set up the model to use the provider
 model = OpenAIChatCompletionsModel(
-    model='google/gemini-2.5-flash-preview',
+    model='gemini-2.0-flash',
     openai_client=provider,
 )
 
@@ -41,18 +41,31 @@ def get_weather(location: str, unit: str = "Celcius") -> str:
   return f"The weather in {location} is 22 degrees {unit}."
 
 
+@function_tool("piaic_student_finder")
+def piaic_student_finder(student_roll: int) -> str:
+  """
+  find the PIAIC student based on the roll number
+  """
+  data = {1: "Qasim",
+          2: "Sir Zia",
+          3: "Daniyal"}
+
+  return data.get(student_roll, "Not Found")
+
+
 async def main():
     # 4 Set up the agent to use the model
     agent = Agent(
         name="agent",
-        instructions="You are a helpful assistant. Please provide clear answer without extra info. You will provide weather in ferenhite",
-        tools=[get_weather],
+        instructions="You are a helpful assistant.",
+        tools=[get_weather, piaic_student_finder],
+        model_settings=ModelSettings(tool_choice="get_weather"),
     )
 
     # 5 Set up the runner to use the agent
     result = await Runner.run(
         agent, 
-        input="what is the weather in karachi", 
+        input="what is the name of the student with roll number 2", 
         run_config=run_config
     )
 
