@@ -3,6 +3,8 @@ from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 from dotenv import load_dotenv
 import os
+from agents import enable_verbose_stdout_logging
+enable_verbose_stdout_logging()
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -39,7 +41,7 @@ async def main():
     # 5 Set up the runner to use the agent
     result = await Runner.run(
         agent,
-        input="what is the meaning of life?",
+        input="Hi",
         run_config=run_config,
     )
     print(result.final_output)

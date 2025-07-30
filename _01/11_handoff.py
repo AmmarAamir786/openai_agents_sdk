@@ -3,6 +3,8 @@ from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 from dotenv import load_dotenv
 import os
+from agents import enable_verbose_stdout_logging
+enable_verbose_stdout_logging()
 
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')

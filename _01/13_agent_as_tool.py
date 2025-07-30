@@ -16,6 +16,8 @@ from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 from dotenv import load_dotenv
 import os
+from agents import enable_verbose_stdout_logging
+enable_verbose_stdout_logging()
 
 # Load the API key from the .env file
 load_dotenv()

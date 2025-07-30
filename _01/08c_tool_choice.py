@@ -59,13 +59,13 @@ async def main():
         name="agent",
         instructions="You are a helpful assistant.",
         tools=[get_weather, piaic_student_finder],
-        model_settings=ModelSettings(tool_choice="get_weather"),
+        model_settings=ModelSettings(tool_choice=None),
     )
 
     # 5 Set up the runner to use the agent
     result = await Runner.run(
         agent, 
-        input="what is the name of the student with roll number 2", 
+        input="Call the piaic student finder tool and tell me what is the name of the student with roll number 2", 
         run_config=run_config
     )
 
